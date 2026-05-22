@@ -135,6 +135,13 @@
                         <p id="recordCount" class="text-yellow-100 drop-shadow-lg text-base"></p>
                     </div>
                 </div>
+                <!-- Back button (shown when viewing a single record from a list) -->
+                <button id="backBtn" class="hidden mt-2 px-5 py-2 bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 rounded-xl hover:bg-yellow-500/30 transition-all duration-200 text-sm font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to list
+                </button>
             </div>
 
             <div id="recordData" class="space-y-6 md:space-y-8 max-h-96 overflow-y-auto pt-6 text-yellow-100 drop-shadow-lg">
@@ -183,6 +190,11 @@
         const recordCount = document.getElementById('recordCount');
         const recordData = document.getElementById('recordData');
         const gettingStarted = document.getElementById('gettingStarted');
+        const backBtn = document.getElementById('backBtn');
+
+        let currentRecords = [];
+        let currentSearchValue = '';
+        let currentSearchType = '';
 
         async function searchRecords() {
             const type = searchType.value;
@@ -225,41 +237,111 @@
         function hideResults() { resultsBox.classList.add('hidden'); }
 
         function showResults(records, searchValue, searchTypeVal) {
+            currentRecords = records;
+            currentSearchValue = searchValue;
+            currentSearchType = searchTypeVal;
+
             recordCount.textContent = `${records.length} record(s) found for ${searchTypeVal.replace(/_/g,' ')}: ${searchValue}`;
+            backBtn.classList.add('hidden');
             recordData.innerHTML = '';
 
-            if(searchTypeVal==='NAME_OF_REGISTRANT'){
-                const div = document.createElement('div'); div.className='space-y-4';
-                records.forEach((r,i)=>{
-                    const btn=document.createElement('button');
-                    btn.className='w-full text-left p-6 bg-gradient-to-r from-black/30 to-gray-800/30 rounded-xl border border-yellow-400/30 hover:bg-gradient-to-r hover:from-black/50 hover:to-gray-800/50 transition-all duration-300 backdrop-blur-sm text-yellow-100 font-medium drop-shadow-lg glow';
-                    btn.textContent=r.NAME_OF_REGISTRANT;
-                    btn.addEventListener('click',()=>showFullRecord(r,i+1));
-                    div.appendChild(btn);
-                });
-                recordData.appendChild(div);
-            } else records.forEach((r,i)=>showFullRecord(r,i+1));
-
-            resultsBox.classList.remove('hidden'); gettingStarted.classList.add('hidden');
-        }
-
-        function showFullRecord(record, num){
-            recordData.innerHTML='';
-            const div=document.createElement('div'); div.className='glass rounded-xl p-6 md:p-8 fade-in glow';
-            const header=document.createElement('h3'); header.className='text-xl md:text-2xl font-semibold text-yellow-400 mb-6 drop-shadow-lg'; header.textContent=`Record ${num}`; div.appendChild(header);
-            const fields=document.createElement('div'); fields.className='space-y-4 text-yellow-100 drop-shadow-lg';
-            const names={NAME_OF_REGISTRANT:'Name of Registrant',ID_NO:'ID Number',FORM_NO:'Form Number',STATUS:'Status',CATEGORY:'Category'};
-            for(const key in names) if(record[key]!==undefined){
-                const row=document.createElement('div'); row.className='flex flex-col md:flex-row gap-2 md:gap-4';
-                const label=document.createElement('span'); label.className='font-semibold text-yellow-300 w-40 drop-shadow-lg'; label.textContent=names[key]+':';
-                const value=document.createElement('span'); value.textContent=record[key];
-                row.appendChild(label); row.appendChild(value); fields.appendChild(row);
+            if (records.length === 1) {
+                // Only one result — go straight to full record, no list needed
+                showFullRecord(records[0], 1, false);
+            } else {
+                // Multiple results — always show the name list first
+                showNameList(records);
             }
-            div.appendChild(fields); recordData.appendChild(div);
+
+            resultsBox.classList.remove('hidden');
+            gettingStarted.classList.add('hidden');
         }
 
-        searchBtn.addEventListener('click',searchRecords);
-        searchInput.addEventListener('keypress',(e)=>{ if(e.key==='Enter') searchRecords(); });
+        function showNameList(records) {
+            backBtn.classList.add('hidden');
+            recordData.innerHTML = '';
+
+            const div = document.createElement('div');
+            div.className = 'space-y-4';
+
+            records.forEach((r, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-6 bg-gradient-to-r from-black/30 to-gray-800/30 rounded-xl border border-yellow-400/30 hover:bg-gradient-to-r hover:from-black/50 hover:to-gray-800/50 transition-all duration-300 backdrop-blur-sm text-yellow-100 font-medium drop-shadow-lg glow';
+
+                // Show name plus a hint of ID/Form for disambiguation
+                let label = r.NAME_OF_REGISTRANT || '(No name)';
+                let sub = [];
+                if (r.ID_NO) sub.push(`ID: ${r.ID_NO}`);
+                if (r.FORM_NO) sub.push(`Form: ${r.FORM_NO}`);
+
+                btn.innerHTML = `
+                    <span class="block text-yellow-200 text-lg">${label}</span>
+                    ${sub.length ? `<span class="block text-yellow-400/70 text-sm mt-1">${sub.join(' &nbsp;·&nbsp; ')}</span>` : ''}
+                `;
+
+                btn.addEventListener('click', () => showFullRecord(r, i + 1, true));
+                div.appendChild(btn);
+            });
+
+            recordData.appendChild(div);
+        }
+
+        function showFullRecord(record, num, showBack) {
+            recordData.innerHTML = '';
+
+            if (showBack) {
+                backBtn.classList.remove('hidden');
+                backBtn.onclick = () => {
+                    recordCount.textContent = `${currentRecords.length} record(s) found for ${currentSearchType.replace(/_/g,' ')}: ${currentSearchValue}`;
+                    showNameList(currentRecords);
+                };
+            } else {
+                backBtn.classList.add('hidden');
+            }
+
+            const div = document.createElement('div');
+            div.className = 'glass rounded-xl p-6 md:p-8 fade-in glow';
+
+            const header = document.createElement('h3');
+            header.className = 'text-xl md:text-2xl font-semibold text-yellow-400 mb-6 drop-shadow-lg';
+            header.textContent = `Record ${num}`;
+            div.appendChild(header);
+
+            const fields = document.createElement('div');
+            fields.className = 'space-y-4 text-yellow-100 drop-shadow-lg';
+
+            const names = {
+                NAME_OF_REGISTRANT: 'Name of Registrant',
+                ID_NO: 'ID Number',
+                FORM_NO: 'Form Number',
+                STATUS: 'Status',
+                CATEGORY: 'Category'
+            };
+
+            for (const key in names) {
+                if (record[key] !== undefined) {
+                    const row = document.createElement('div');
+                    row.className = 'flex flex-col md:flex-row gap-2 md:gap-4';
+
+                    const label = document.createElement('span');
+                    label.className = 'font-semibold text-yellow-300 w-48 drop-shadow-lg';
+                    label.textContent = names[key] + ':';
+
+                    const value = document.createElement('span');
+                    value.textContent = record[key];
+
+                    row.appendChild(label);
+                    row.appendChild(value);
+                    fields.appendChild(row);
+                }
+            }
+
+            div.appendChild(fields);
+            recordData.appendChild(div);
+        }
+
+        searchBtn.addEventListener('click', searchRecords);
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchRecords(); });
     </script>
 </body>
 </html>
