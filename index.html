@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin ID Status</title>
+    <title>Admin ID Status — Secure Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Supabase JS Client Library (for authenticated access) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -62,13 +66,51 @@
         .glow:hover {
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
         }
+        input::placeholder {
+            color: rgba(255, 215, 0, 0.5);
+        }
     </style>
 </head>
 <body class="gold-black-bg min-h-screen p-4 md:p-8">
-    <div class="max-w-5xl mx-auto">
+
+    <!-- ===================== LOGIN SCREEN ===================== -->
+    <div id="loginScreen" class="max-w-md mx-auto mt-12 md:mt-24 fade-in">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-full flex items-center justify-center shadow-2xl glass glow mb-6">
+                <svg class="w-10 h-10 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2 drop-shadow-lg">Admin Verification</h1>
+            <p class="text-yellow-200 text-base md:text-lg font-light drop-shadow-lg">Coldingen Registration Office — Staff Access Only</p>
+        </div>
+
+        <div class="glass rounded-2xl shadow-2xl p-8 md:p-10 fade-in glow space-y-5">
+            <div>
+                <label for="staffEmail" class="block text-sm font-semibold text-yellow-300 mb-2 drop-shadow-lg">Staff Email</label>
+                <input type="email" id="staffEmail" placeholder="name@domain.com"
+                    class="w-full px-4 py-3 bg-gradient-to-r from-black/50 to-gray-800/50 border border-yellow-400/50 rounded-xl text-yellow-100 placeholder-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-base drop-shadow-lg">
+            </div>
+            <div>
+                <label for="portalPassword" class="block text-sm font-semibold text-yellow-300 mb-2 drop-shadow-lg">Secure Password</label>
+                <input type="password" id="portalPassword" placeholder="••••••••"
+                    class="w-full px-4 py-3 bg-gradient-to-r from-black/50 to-gray-800/50 border border-yellow-400/50 rounded-xl text-yellow-100 placeholder-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-base drop-shadow-lg">
+            </div>
+
+            <div id="loginError" class="hidden text-sm bg-red-950/50 border border-red-800 text-red-300 p-3 rounded-xl text-center font-medium drop-shadow-lg"></div>
+
+            <button id="loginBtn" class="w-full px-8 py-4 bg-gradient-to-r from-yellow-500 via-yellow-500 to-yellow-600 text-black rounded-xl hover:from-yellow-600 hover:via-yellow-600 hover:to-yellow-700 transition-all duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transform hover:scale-105 text-lg font-medium glow drop-shadow-lg">
+                <span id="loginBtnText">Verify Access Identity</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ===================== MAIN APP (HIDDEN UNTIL LOGGED IN) ===================== -->
+    <div id="appInterface" class="hidden max-w-5xl mx-auto">
+
         <!-- Header -->
         <div class="text-center mb-8 md:mb-12 fade-in">
-            <div class="flex flex-col md:flex-row items-center justify-center gap-6 mb-6">
+            <div class="flex flex-col md:flex-row items-center justify-center gap-6 mb-4">
                 <div class="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-full flex items-center justify-center shadow-2xl glass glow">
                     <svg class="w-10 h-10 md:w-12 md:h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -78,6 +120,12 @@
                     <h1 class="text-4xl md:text-6xl font-bold text-yellow-400 mb-2 drop-shadow-lg">Admin ID Status</h1>
                     <p class="text-yellow-200 text-lg md:text-xl font-light drop-shadow-lg">Search for records using ID card number, Form number, or Name of Registrant</p>
                 </div>
+            </div>
+            <div class="flex items-center justify-center gap-4 mt-2">
+                <p id="userDisplay" class="text-yellow-300/80 text-sm font-mono drop-shadow-lg"></p>
+                <button id="logoutBtn" class="text-xs bg-black/40 hover:bg-red-900/60 border border-yellow-400/30 text-yellow-200 hover:text-white font-medium py-1.5 px-4 rounded-lg transition-colors">
+                    Exit Portal
+                </button>
             </div>
         </div>
 
@@ -135,7 +183,6 @@
                         <p id="recordCount" class="text-yellow-100 drop-shadow-lg text-base"></p>
                     </div>
                 </div>
-                <!-- Back button (shown when viewing a single record from a list) -->
                 <button id="backBtn" class="hidden mt-2 px-5 py-2 bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 rounded-xl hover:bg-yellow-500/30 transition-all duration-200 text-sm font-medium flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -145,7 +192,7 @@
             </div>
 
             <div id="recordData" class="space-y-6 md:space-y-8 max-h-96 overflow-y-auto pt-6 text-yellow-100 drop-shadow-lg">
-                <!-- Data will be inserted here -->
+                <!-- Data inserted here -->
             </div>
         </div>
 
@@ -179,6 +226,24 @@
         const SUPABASE_URL = 'https://xdwkfcrztvaeyeonqwrx.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhkd2tmY3J6dHZhZXllb25xd3J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NTY0NjQsImV4cCI6MjA3OTIzMjQ2NH0.9Dvlip8vGcn58kHLHgMm7ugG26i5ONDWCmm1ROHkneA';
 
+        let supabaseClient;
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.error("CRITICAL: Failed to load Supabase client library!", e);
+        }
+
+        // ---- DOM refs ----
+        const loginScreen = document.getElementById('loginScreen');
+        const appInterface = document.getElementById('appInterface');
+        const staffEmailInput = document.getElementById('staffEmail');
+        const portalPassword = document.getElementById('portalPassword');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginBtnText = document.getElementById('loginBtnText');
+        const loginError = document.getElementById('loginError');
+        const userDisplay = document.getElementById('userDisplay');
+        const logoutBtn = document.getElementById('logoutBtn');
+
         const searchType = document.getElementById('searchType');
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
@@ -196,45 +261,132 @@
         let currentSearchValue = '';
         let currentSearchType = '';
 
+        // ---- Session check ----
+        if (supabaseClient) {
+            checkActiveSession();
+        }
+
+        async function checkActiveSession() {
+            try {
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                if (error) throw error;
+                if (session && session.user) {
+                    showApp(session.user.email);
+                } else {
+                    showLogin();
+                }
+            } catch (err) {
+                console.error("Session check failed:", err);
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            loginScreen.classList.remove('hidden');
+            appInterface.classList.add('hidden');
+        }
+
+        function showApp(email) {
+            loginScreen.classList.add('hidden');
+            appInterface.classList.remove('hidden');
+            userDisplay.textContent = `Operator: ${email}`;
+        }
+
+        // ---- Auth ----
+        loginBtn.addEventListener('click', handleAuthentication);
+        portalPassword.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAuthentication(); });
+        logoutBtn.addEventListener('click', handleLogout);
+
+        async function handleAuthentication() {
+            const email = staffEmailInput.value.trim();
+            const password = portalPassword.value.trim();
+
+            if (!email || !password) {
+                showLoginError('Please supply both identity components.');
+                return;
+            }
+
+            showLoginError('');
+            loginBtn.disabled = true;
+            loginBtnText.textContent = 'Verifying...';
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                showApp(data.user.email);
+            } catch (err) {
+                showLoginError(`Access Denied: ${err.message}`);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtnText.textContent = 'Verify Access Identity';
+            }
+        }
+
+        function showLoginError(msg) {
+            if (!msg) { loginError.classList.add('hidden'); return; }
+            loginError.textContent = msg;
+            loginError.classList.remove('hidden');
+        }
+
+        async function handleLogout() {
+            await supabaseClient.auth.signOut();
+            window.location.reload();
+        }
+
+        // ---- Search (secured via RPC, same as the protected portal) ----
+        searchBtn.addEventListener('click', searchRecords);
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchRecords(); });
+
         async function searchRecords() {
             const type = searchType.value;
             const value = searchInput.value.trim();
-            if (!value) { showError('Please enter a search value'); return; }
+            if (!value) { showSearchError('Please enter a search value'); return; }
 
             searchBtn.disabled = true;
             searchIcon.classList.add('hidden');
             loadingIcon.classList.remove('hidden');
-            hideError(); hideResults();
+            hideSearchError();
+            hideResults();
 
             try {
-                let queryParam = type === 'NAME_OF_REGISTRANT'
-                    ? `${type}=ilike.*${value.replace(/ /g, '%')}*`
-                    : `${type}=eq.${encodeURIComponent(value)}`;
-
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/ColdingenAdmin?${queryParam}&select=NAME_OF_REGISTRANT,ID_NO,FORM_NO,STATUS,CATEGORY`, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
+                const { data, error } = await supabaseClient.rpc('safe_search_gateway', {
+                    p_search_type: type,
+                    p_search_value: value
                 });
 
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.message || `${response.status} ${response.statusText}`);
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    showSearchError(`No records found for ${type.replace(/_/g, ' ')}: ${value}`);
+                } else {
+                    showResults(data, value, type);
                 }
-
-                const result = await response.json();
-                if (!result.length) showError(`No records found for ${type.replace(/_/g, ' ')}: ${value}`);
-                else showResults(result, value, type);
-
-            } catch (err) { showError(err.message || 'Failed to fetch data.'); }
-            finally { searchBtn.disabled = false; searchIcon.classList.remove('hidden'); loadingIcon.classList.add('hidden'); }
+            } catch (err) {
+                showSearchError(err.message || 'Failed to fetch data.');
+            } finally {
+                searchBtn.disabled = false;
+                searchIcon.classList.remove('hidden');
+                loadingIcon.classList.add('hidden');
+            }
         }
 
-        function showError(msg) { errorMessage.textContent = msg; errorBox.classList.remove('hidden'); gettingStarted.classList.add('hidden'); }
-        function hideError() { errorBox.classList.add('hidden'); }
+        function showSearchError(msg) {
+            errorMessage.textContent = msg;
+            errorBox.classList.remove('hidden');
+            gettingStarted.classList.add('hidden');
+        }
+        function hideSearchError() { errorBox.classList.add('hidden'); }
         function hideResults() { resultsBox.classList.add('hidden'); }
+
+        // Reads a field from a record regardless of whether the RPC returns
+        // UPPERCASE column names (e.g. NAME_OF_REGISTRANT) or lowercase ones
+        // (e.g. name_of_registrant) — covers either return shape.
+        function getField(record, upperKey) {
+            if (record[upperKey] !== undefined) return record[upperKey];
+            const lowerKey = upperKey.toLowerCase();
+            if (record[lowerKey] !== undefined) return record[lowerKey];
+            return undefined;
+        }
 
         function showResults(records, searchValue, searchTypeVal) {
             currentRecords = records;
@@ -246,10 +398,8 @@
             recordData.innerHTML = '';
 
             if (records.length === 1) {
-                // Only one result — go straight to full record, no list needed
                 showFullRecord(records[0], 1, false);
             } else {
-                // Multiple results — always show the name list first
                 showNameList(records);
             }
 
@@ -268,16 +418,24 @@
                 const btn = document.createElement('button');
                 btn.className = 'w-full text-left p-6 bg-gradient-to-r from-black/30 to-gray-800/30 rounded-xl border border-yellow-400/30 hover:bg-gradient-to-r hover:from-black/50 hover:to-gray-800/50 transition-all duration-300 backdrop-blur-sm text-yellow-100 font-medium drop-shadow-lg glow';
 
-                // Show name plus a hint of ID/Form for disambiguation
-                let label = r.NAME_OF_REGISTRANT || '(No name)';
-                let sub = [];
-                if (r.ID_NO) sub.push(`ID: ${r.ID_NO}`);
-                if (r.FORM_NO) sub.push(`Form: ${r.FORM_NO}`);
+                const name = getField(r, 'NAME_OF_REGISTRANT') || '(No name)';
+                const idNo = getField(r, 'ID_NO');
+                const formNo = getField(r, 'FORM_NO');
 
-                btn.innerHTML = `
-                    <span class="block text-yellow-200 text-lg">${label}</span>
-                    ${sub.length ? `<span class="block text-yellow-400/70 text-sm mt-1">${sub.join(' &nbsp;·&nbsp; ')}</span>` : ''}
-                `;
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'block text-yellow-200 text-lg';
+                nameSpan.textContent = name;
+                btn.appendChild(nameSpan);
+
+                const subParts = [];
+                if (idNo) subParts.push(`ID: ${idNo}`);
+                if (formNo) subParts.push(`Form: ${formNo}`);
+                if (subParts.length) {
+                    const subSpan = document.createElement('span');
+                    subSpan.className = 'block text-yellow-400/70 text-sm mt-1';
+                    subSpan.textContent = subParts.join('   ·   ');
+                    btn.appendChild(subSpan);
+                }
 
                 btn.addEventListener('click', () => showFullRecord(r, i + 1, true));
                 div.appendChild(btn);
@@ -310,7 +468,7 @@
             const fields = document.createElement('div');
             fields.className = 'space-y-4 text-yellow-100 drop-shadow-lg';
 
-            const names = {
+            const labels = {
                 NAME_OF_REGISTRANT: 'Name of Registrant',
                 ID_NO: 'ID Number',
                 FORM_NO: 'Form Number',
@@ -318,20 +476,21 @@
                 CATEGORY: 'Category'
             };
 
-            for (const key in names) {
-                if (record[key] !== undefined) {
+            for (const key in labels) {
+                const val = getField(record, key);
+                if (val !== undefined) {
                     const row = document.createElement('div');
                     row.className = 'flex flex-col md:flex-row gap-2 md:gap-4';
 
-                    const label = document.createElement('span');
-                    label.className = 'font-semibold text-yellow-300 w-48 drop-shadow-lg';
-                    label.textContent = names[key] + ':';
+                    const labelEl = document.createElement('span');
+                    labelEl.className = 'font-semibold text-yellow-300 w-48 drop-shadow-lg';
+                    labelEl.textContent = labels[key] + ':';
 
-                    const value = document.createElement('span');
-                    value.textContent = record[key];
+                    const valueEl = document.createElement('span');
+                    valueEl.textContent = val;
 
-                    row.appendChild(label);
-                    row.appendChild(value);
+                    row.appendChild(labelEl);
+                    row.appendChild(valueEl);
                     fields.appendChild(row);
                 }
             }
@@ -339,9 +498,6 @@
             div.appendChild(fields);
             recordData.appendChild(div);
         }
-
-        searchBtn.addEventListener('click', searchRecords);
-        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchRecords(); });
     </script>
 </body>
 </html>
