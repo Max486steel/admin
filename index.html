@@ -260,6 +260,7 @@
         let currentRecords = [];
         let currentSearchValue = '';
         let currentSearchType = '';
+        let accessWindowIntervalId = null;
 
         // ---- Session check ----
         if (supabaseClient) {
@@ -284,12 +285,49 @@
         function showLogin() {
             loginScreen.classList.remove('hidden');
             appInterface.classList.add('hidden');
+            stopAccessWindowPolling();
         }
 
         function showApp(email) {
             loginScreen.classList.add('hidden');
             appInterface.classList.remove('hidden');
             userDisplay.textContent = `Operator: ${email}`;
+            startAccessWindowPolling();
+        }
+
+        // ---- Office-hours polling: forces logout the moment the office closes ----
+        // Uses the server's clock (via check_access_window RPC) as the source of
+        // truth, not the browser's clock, so it can't be spoofed client-side.
+        function startAccessWindowPolling() {
+            stopAccessWindowPolling();
+            checkAccessWindowNow(); // check immediately on login
+            accessWindowIntervalId = setInterval(checkAccessWindowNow, 60000); // then every 60s
+        }
+
+        function stopAccessWindowPolling() {
+            if (accessWindowIntervalId) {
+                clearInterval(accessWindowIntervalId);
+                accessWindowIntervalId = null;
+            }
+        }
+
+        async function checkAccessWindowNow() {
+            try {
+                const { data, error } = await supabaseClient.rpc('check_access_window');
+                if (error) throw error;
+                if (data === false) {
+                    await forceLogoutOfficeClosed();
+                }
+            } catch (err) {
+                console.error("Access window check failed:", err);
+            }
+        }
+
+        async function forceLogoutOfficeClosed() {
+            stopAccessWindowPolling();
+            await supabaseClient.auth.signOut();
+            showLogin();
+            showLoginError('Office is now closed. You have been logged out.');
         }
 
         // ---- Auth ----
@@ -329,6 +367,7 @@
         }
 
         async function handleLogout() {
+            stopAccessWindowPolling();
             await supabaseClient.auth.signOut();
             window.location.reload();
         }
