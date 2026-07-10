@@ -3,540 +3,775 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin ID Status — Secure Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Supabase JS Client Library (for authenticated access) -->
+    <title>Admin ID Status</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(160deg, #0a0a0a 0%, #141414 40%, #1c1c1c 100%);
+            min-height: 100vh;
         }
-        .fade-in {
-            animation: fadeIn 0.8s ease-out;
-        }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .fade-in { animation: fadeIn 0.8s ease-out; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 0.8s linear infinite; }
+        .hidden { display: none !important; }
+
+        /* Glass */
         .glass {
             backdrop-filter: blur(20px);
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,215,0,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
-        .glass-hover {
-            transition: all 0.4s ease;
-        }
+        .glass-hover { transition: all 0.4s ease; }
         .glass-hover:hover {
-            background: rgba(0, 0, 0, 0.8);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 215, 0, 0.4);
+            background: rgba(0,0,0,0.8);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 20px rgba(255,215,0,0.4);
         }
-        ::-webkit-scrollbar {
-            width: 8px;
+        .glow { box-shadow: 0 0 20px rgba(255,215,0,0.5); }
+        .glow:hover { box-shadow: 0 0 30px rgba(255,215,0,0.8); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(45deg,#ffd700,#ffed4e); border-radius: 4px; }
+
+        /* Input */
+        .field-input {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,215,0,0.4);
+            border-radius: 12px;
+            color: #fef3c7;
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
+        .field-input::placeholder { color: rgba(254,243,199,0.35); }
+        .field-input:focus {
+            border-color: rgba(255,215,0,0.8);
+            box-shadow: 0 0 0 3px rgba(255,215,0,0.12);
         }
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(45deg, #ffd700, #ffed4e);
-            border-radius: 4px;
+
+        /* Gold button */
+        .btn-gold {
+            background: linear-gradient(135deg,#f5c518,#d4a00a);
+            color: #0a0a0a;
+            font-weight: 700;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+            transition: filter 0.2s, transform 0.15s;
+            letter-spacing: 0.01em;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(45deg, #ffed4e, #ffd700);
+        .btn-gold:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-2px); }
+        .btn-gold:active:not(:disabled) { transform: none; }
+        .btn-gold:disabled { filter: grayscale(0.5) brightness(0.7); cursor: not-allowed; transform: none; }
+
+        /* Ghost button */
+        .btn-ghost {
+            background: rgba(255,215,0,0.08);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 10px;
+            color: #fcd34d;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            padding: 8px 16px;
         }
-        .gold-black-bg {
-            background: linear-gradient(135deg, #000000 0%, #1a1a1a 25%, #333333 50%, #4d4d4d 75%, #666666 100%);
-            animation: gradientShift 10s ease infinite;
+        .btn-ghost:hover { background: rgba(255,215,0,0.15); }
+
+        /* Radio pills */
+        .radio-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .radio-pill {
+            display: flex; align-items: center; gap: 8px;
+            cursor: pointer; padding: 10px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,215,0,0.2);
+            background: rgba(255,215,0,0.03);
+            color: rgba(254,243,199,0.65);
+            font-size: 15px; font-weight: 500;
+            transition: all 0.2s; user-select: none;
+            font-family: inherit;
         }
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
+        .radio-pill:hover { border-color: rgba(255,215,0,0.5); background: rgba(255,215,0,0.08); color: #fef3c7; }
+        .radio-pill.selected { border-color: #f5c518; background: rgba(245,197,24,0.13); color: #fde68a; }
+        .radio-pill input { display: none; }
+        .radio-dot { width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,215,0,0.35); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:border-color 0.2s; }
+        .radio-pill.selected .radio-dot { border-color:#f5c518; }
+        .radio-dot-inner { width:7px; height:7px; border-radius:50%; background:#f5c518; display:none; }
+        .radio-pill.selected .radio-dot-inner { display:block; }
+
+        /* Result items */
+        .result-item {
+            width:100%; text-align:left; padding:16px 20px;
+            background:rgba(255,215,0,0.03);
+            border:1px solid rgba(255,215,0,0.15);
+            border-radius:12px; color:#fef3c7;
+            cursor:pointer; font-family:inherit;
+            transition: background 0.2s, border-color 0.2s;
         }
-        .text-shadow {
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+        .result-item:hover { background:rgba(255,215,0,0.09); border-color:rgba(255,215,0,0.4); }
+
+        /* Modal overlay */
+        .modal-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,0.88);
+            z-index:9999; align-items:center; justify-content:center; padding:1rem;
         }
-        .glow {
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        .modal-overlay.active { display:flex; }
+        .modal-box {
+            background:#0d0d0d;
+            border:1px solid rgba(255,215,0,0.3);
+            border-radius:20px; padding:32px;
+            max-width:420px; width:100%;
+            box-shadow:0 24px 64px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,215,0,0.09);
+            animation: modalIn 0.25s ease-out;
         }
-        .glow:hover {
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+        @keyframes modalIn { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
+
+        /* Offline banner */
+        #offlineBanner {
+            display:none; position:fixed; top:0; left:0; right:0; z-index:99999;
+            background:#7f1d1d; border-bottom:1px solid #fca5a5;
+            padding:10px 20px; text-align:center;
+            color:#fecaca; font-weight:600; font-size:14px;
         }
-        input::placeholder {
-            color: rgba(255, 215, 0, 0.5);
+        #offlineBanner.active { display:block; }
+
+        /* Top bar */
+        .topbar {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:12px 24px;
+            border-bottom:1px solid rgba(255,215,0,0.15);
+            background:rgba(0,0,0,0.55);
+            backdrop-filter:blur(12px);
+            position:sticky; top:0; z-index:100;
         }
     </style>
 </head>
-<body class="gold-black-bg min-h-screen p-4 md:p-8">
+<body>
 
-    <!-- ===================== LOGIN SCREEN ===================== -->
-    <div id="loginScreen" class="max-w-md mx-auto mt-12 md:mt-24 fade-in">
-        <div class="text-center mb-8">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-full flex items-center justify-center shadow-2xl glass glow mb-6">
-                <svg class="w-10 h-10 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                </svg>
-            </div>
-            <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2 drop-shadow-lg">Admin Verification</h1>
-            <p class="text-yellow-200 text-base md:text-lg font-light drop-shadow-lg">Coldingen Registration Office — Staff Access Only</p>
-        </div>
+<!-- Offline Banner -->
+<div id="offlineBanner">⚠ No internet connection — you have been logged out. Please reconnect and sign in again.</div>
 
-        <div class="glass rounded-2xl shadow-2xl p-8 md:p-10 fade-in glow space-y-5">
-            <div>
-                <label for="staffEmail" class="block text-sm font-semibold text-yellow-300 mb-2 drop-shadow-lg">Staff Email</label>
-                <input type="email" id="staffEmail" placeholder="name@domain.com"
-                    class="w-full px-4 py-3 bg-gradient-to-r from-black/50 to-gray-800/50 border border-yellow-400/50 rounded-xl text-yellow-100 placeholder-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-base drop-shadow-lg">
-            </div>
-            <div>
-                <label for="portalPassword" class="block text-sm font-semibold text-yellow-300 mb-2 drop-shadow-lg">Secure Password</label>
-                <input type="password" id="portalPassword" placeholder="••••••••"
-                    class="w-full px-4 py-3 bg-gradient-to-r from-black/50 to-gray-800/50 border border-yellow-400/50 rounded-xl text-yellow-100 placeholder-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-base drop-shadow-lg">
-            </div>
+<!-- ══════════════════════════════════════
+     SCREEN 1 — LOGIN
+══════════════════════════════════════ -->
+<div id="loginScreen" class="screen active">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+        <div style="width:100%;max-width:440px;">
 
-            <div id="loginError" class="hidden text-sm bg-red-950/50 border border-red-800 text-red-300 p-3 rounded-xl text-center font-medium drop-shadow-lg"></div>
-
-            <button id="loginBtn" class="w-full px-8 py-4 bg-gradient-to-r from-yellow-500 via-yellow-500 to-yellow-600 text-black rounded-xl hover:from-yellow-600 hover:via-yellow-600 hover:to-yellow-700 transition-all duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transform hover:scale-105 text-lg font-medium glow drop-shadow-lg">
-                <span id="loginBtnText">Verify Access Identity</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- ===================== MAIN APP (HIDDEN UNTIL LOGGED IN) ===================== -->
-    <div id="appInterface" class="hidden max-w-5xl mx-auto">
-
-        <!-- Header -->
-        <div class="text-center mb-8 md:mb-12 fade-in">
-            <div class="flex flex-col md:flex-row items-center justify-center gap-6 mb-4">
-                <div class="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-full flex items-center justify-center shadow-2xl glass glow">
-                    <svg class="w-10 h-10 md:w-12 md:h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="text-4xl md:text-6xl font-bold text-yellow-400 mb-2 drop-shadow-lg">Admin ID Status</h1>
-                    <p class="text-yellow-200 text-lg md:text-xl font-light drop-shadow-lg">Search for records using ID card number, Form number, or Name of Registrant</p>
-                </div>
-            </div>
-            <div class="flex items-center justify-center gap-4 mt-2">
-                <p id="userDisplay" class="text-yellow-300/80 text-sm font-mono drop-shadow-lg"></p>
-                <button id="logoutBtn" class="text-xs bg-black/40 hover:bg-red-900/60 border border-yellow-400/30 text-yellow-200 hover:text-white font-medium py-1.5 px-4 rounded-lg transition-colors">
-                    Exit Portal
-                </button>
-            </div>
-        </div>
-
-        <!-- Search Box -->
-        <div class="glass rounded-2xl shadow-2xl p-8 md:p-10 mb-8 fade-in glass-hover glow">
-            <div class="mb-6">
-                <label for="searchType" class="block text-sm font-semibold text-yellow-300 mb-4 drop-shadow-lg">Search By:</label>
-                <select id="searchType" class="w-full px-4 py-4 bg-gradient-to-r from-black/50 to-gray-800/50 border border-yellow-400/50 rounded-xl text-yellow-100 placeholder-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-lg glow drop-shadow-lg">
-                    <option value="ID_NO" class="text-black">ID Number</option>
-                    <option value="FORM_NO" class="text-black">Form Number</option>
-                    <option value="NAME_OF_REGISTRANT" class="text-black">Name of Registrant</option>
-                </select>
-            </div>
-            <div class="flex flex-col md:flex-row gap-4">
-                <div class="flex-1">
-                    <input type="text" id="searchInput" placeholder="Enter search value..." class="w-full px-4 py-4 bg-gradient-to-r from-black/50 to-gray-800/50 border border-yellow-400/50 rounded-xl text-yellow-100 placeholder-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-lg glow drop-shadow-lg" />
-                </div>
-                <button id="searchBtn" class="px-8 md:px-10 py-4 bg-gradient-to-r from-yellow-500 via-yellow-500 to-yellow-600 text-black rounded-xl hover:from-yellow-600 hover:via-yellow-600 hover:to-yellow-700 transition-all duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transform hover:scale-105 text-lg font-medium glow drop-shadow-lg">
-                    <svg id="searchIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                    <svg id="loadingIcon" class="w-6 h-6 animate-spin hidden" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Search</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Error Message -->
-        <div id="errorBox" class="glass rounded-2xl p-6 md:p-8 mb-8 hidden fade-in border-l-4 border-red-400 glow">
-            <div class="flex items-start gap-4">
-                <svg class="w-6 h-6 md:w-7 md:h-7 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <div>
-                    <h3 class="font-semibold text-red-300 mb-2 text-lg drop-shadow-lg">Error</h3>
-                    <p id="errorMessage" class="text-red-200 text-base drop-shadow-lg"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Results -->
-        <div id="resultsBox" class="glass rounded-2xl shadow-2xl p-8 md:p-10 hidden fade-in glass-hover glow">
-            <div class="sticky top-0 z-10 glass -mx-8 md:-mx-10 -mt-8 md:-mt-10 px-8 md:px-10 pt-8 md:pt-10 pb-6 border-b border-yellow-400/30 rounded-t-2xl">
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-full flex items-center justify-center glass glow">
-                        <svg class="w-7 h-7 md:w-8 md:h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            <!-- Header matching main screen style -->
+            <div class="text-center fade-in" style="text-align:center;margin-bottom:28px;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+                    <div style="width:88px;height:88px;background:linear-gradient(135deg,#fbbf24,#d97706);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 28px rgba(255,215,0,0.4);" class="glass glow">
+                        <svg width="44" height="44" fill="none" stroke="#000" stroke-width="2.2" viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5M16 4v5M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2"/>
                         </svg>
                     </div>
                     <div>
-                        <h2 class="text-3xl md:text-4xl font-bold text-yellow-300 drop-shadow-lg mb-1">Records Found</h2>
-                        <p id="recordCount" class="text-yellow-100 drop-shadow-lg text-base"></p>
+                        <h1 style="font-size:44px;font-weight:700;color:#ffd700;line-height:1.1;text-shadow:0 2px 8px rgba(0,0,0,0.8);">Admin ID Status</h1>
+                        <p style="color:rgba(254,243,199,0.75);font-size:16px;font-weight:300;margin-top:8px;text-shadow:0 2px 8px rgba(0,0,0,0.8);">Coldingen Registration Office — GECOM</p>
                     </div>
                 </div>
-                <button id="backBtn" class="hidden mt-2 px-5 py-2 bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 rounded-xl hover:bg-yellow-500/30 transition-all duration-200 text-sm font-medium flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                    </svg>
-                    Back to list
-                </button>
             </div>
 
-            <div id="recordData" class="space-y-6 md:space-y-8 max-h-96 overflow-y-auto pt-6 text-yellow-100 drop-shadow-lg">
-                <!-- Data inserted here -->
+            <!-- Login Card -->
+            <div class="glass rounded-2xl fade-in glass-hover glow" style="border-radius:20px;padding:36px;">
+                <h2 style="font-size:18px;font-weight:600;color:#fcd34d;margin-bottom:24px;text-align:center;">Staff Sign In</h2>
+
+                <div style="margin-bottom:18px;">
+                    <label style="display:block;font-size:13px;font-weight:600;color:#fcd34d;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">Email Address</label>
+                    <input type="email" id="loginEmail" class="field-input" placeholder="Enter your email address" />
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;font-size:13px;font-weight:600;color:#fcd34d;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">Password</label>
+                    <div style="position:relative;">
+                        <input type="password" id="loginPassword" class="field-input" placeholder="Enter your password" style="padding-right:48px;" />
+                        <button id="togglePw" type="button" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(254,243,199,0.4);font-size:18px;line-height:1;">👁</button>
+                    </div>
+                </div>
+
+                <div id="loginError" style="display:none;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:14px;color:#fca5a5;line-height:1.5;"></div>
+
+                <button id="loginBtn" class="btn-gold" style="width:100%;padding:15px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;">
+                    <svg id="loginIcon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    <svg id="loginLoading" class="hidden spin" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10" stroke-linecap="round"/></svg>
+                    <span id="loginBtnText">Sign In</span>
+                </button>
+
+                <p style="text-align:center;font-size:12px;color:rgba(254,243,199,0.3);margin-top:20px;">Contact your supervisor if you need access.</p>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 2 — SEARCH
+══════════════════════════════════════ -->
+<div id="searchScreen" class="screen">
+
+    <!-- Top bar -->
+    <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;background:linear-gradient(135deg,#f5c518,#b8860b);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="15" height="15" fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35" stroke-linecap="round"/></svg>
+            </div>
+            <div>
+                <span style="font-size:13px;font-weight:700;color:#f5c518;">Admin ID Status</span>
+                <span id="loggedInAs" style="font-size:11px;color:rgba(254,243,199,0.35);margin-left:10px;"></span>
+            </div>
+        </div>
+        <button id="logoutBtn" class="btn-ghost">Sign Out</button>
+    </div>
+
+    <div style="max-width:860px;margin:0 auto;padding:32px 16px 48px;">
+
+        <!-- Main Header -->
+        <div class="fade-in" style="text-align:center;margin-bottom:36px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
+                <div style="width:88px;height:88px;background:linear-gradient(135deg,#fbbf24,#d97706);border-radius:50%;display:flex;align-items:center;justify-content:center;" class="glass glow">
+                    <svg width="44" height="44" fill="none" stroke="#000" stroke-width="2.2" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 style="font-size:52px;font-weight:700;color:#ffd700;margin-bottom:8px;text-shadow:0 2px 8px rgba(0,0,0,0.8);">Admin ID Status</h1>
+                    <p style="color:rgba(254,243,199,0.75);font-size:18px;font-weight:300;text-shadow:0 2px 8px rgba(0,0,0,0.8);">Search for records using ID card number, Form number, or Name of Registrant</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Card -->
+        <div class="glass fade-in glass-hover glow" style="border-radius:20px;padding:36px;margin-bottom:20px;">
+
+            <label style="display:block;font-size:13px;font-weight:600;color:#fcd34d;margin-bottom:14px;text-shadow:0 1px 4px rgba(0,0,0,0.8);">Search By:</label>
+
+            <!-- Radio pills -->
+            <div class="radio-group" style="margin-bottom:24px;" id="radioGroup">
+                <label class="radio-pill selected" data-value="ID_NO">
+                    <input type="radio" name="searchType" value="ID_NO" checked>
+                    <span class="radio-dot"><span class="radio-dot-inner"></span></span>
+                    ID Number
+                </label>
+                <label class="radio-pill" data-value="FORM_NO">
+                    <input type="radio" name="searchType" value="FORM_NO">
+                    <span class="radio-dot"><span class="radio-dot-inner"></span></span>
+                    Form Number
+                </label>
+                <label class="radio-pill" data-value="NAME_OF_REGISTRANT">
+                    <input type="radio" name="searchType" value="NAME_OF_REGISTRANT">
+                    <span class="radio-dot"><span class="radio-dot-inner"></span></span>
+                    Name of Registrant
+                </label>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;">
+                <div style="flex:1;min-width:220px;">
+                    <input type="text" id="searchInput" placeholder="Enter ID number..." class="field-input" />
+                </div>
+                <button id="searchBtn" class="btn-gold glow" style="padding:14px 32px;display:flex;align-items:center;gap:10px;white-space:nowrap;">
+                    <svg id="searchIcon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35" stroke-linecap="round"/></svg>
+                    <svg id="searchLoading" class="hidden spin" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10" stroke-linecap="round"/></svg>
+                    <span id="searchBtnText">Search</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Box -->
+        <div id="resultsBox" class="glass fade-in glass-hover glow" style="display:none;border-radius:20px;margin-bottom:20px;overflow:hidden;">
+            <div style="padding:22px 28px;border-bottom:1px solid rgba(255,215,0,0.2);display:flex;align-items:center;justify-content:space-between;gap:12px;" class="glass" style="border-radius:20px 20px 0 0;">
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <div style="width:52px;height:52px;background:linear-gradient(135deg,#fbbf24,#d97706);border-radius:50%;display:flex;align-items:center;justify-content:center;" class="glass glow">
+                        <svg width="24" height="24" fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div>
+                        <h2 style="font-size:26px;font-weight:700;color:#fcd34d;text-shadow:0 1px 4px rgba(0,0,0,0.8);">Records Found</h2>
+                        <p id="recordCount" style="font-size:14px;color:rgba(254,243,199,0.65);margin-top:2px;"></p>
+                    </div>
+                </div>
+                <button id="backBtn" style="display:none;padding:9px 18px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.35);border-radius:10px;color:#fcd34d;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">← Back to list</button>
+            </div>
+            <div id="recordData" style="padding:24px 28px;max-height:480px;overflow-y:auto;color:#fef3c7;"></div>
         </div>
 
         <!-- Important Notice -->
-        <div id="gettingStarted" class="glass rounded-2xl p-8 md:p-10 text-center fade-in glass-hover glow text-yellow-100 drop-shadow-lg">
-            <h3 class="font-semibold text-yellow-300 mb-4 text-xl md:text-2xl drop-shadow-lg">Important Notice for Registrants</h3>
-            <p class="text-yellow-100 text-base md:text-lg mb-6 leading-relaxed drop-shadow-lg">
-                Please note that GECOM does not accept authorization for ID card collection. Registrants must collect their ID cards in person.
+        <div id="noticeCard" class="glass fade-in glass-hover glow" style="border-radius:20px;padding:36px;text-align:center;">
+            <h3 style="font-size:20px;font-weight:600;color:#fcd34d;margin-bottom:20px;text-shadow:0 1px 4px rgba(0,0,0,0.8);">How to Use This Portal</h3>
+
+            <p style="font-size:15px;color:rgba(254,243,199,0.8);line-height:1.8;margin-bottom:18px;">
+                Use the search options above to look up a registrant's ID card status. Select your search type — <strong style="color:#fde68a;">ID Number</strong>, <strong style="color:#fde68a;">Form Number</strong>, or <strong style="color:#fde68a;">Name of Registrant</strong> — then enter the value and click <strong style="color:#fde68a;">Search</strong>.
             </p>
-            <p class="text-yellow-100 text-base md:text-lg mb-6 leading-relaxed drop-shadow-lg">
-                Office working hours are as follows:
-            </p>
-            <ul class="text-yellow-100 text-base md:text-lg mb-6 list-disc list-inside leading-relaxed drop-shadow-lg">
-                <li>Monday to Thursday: 8:00 AM to 4:30 PM</li>
-                <li>Friday: 8:00 AM to 3:30 PM</li>
-                <li>Lunch break: 12:00 PM to 1:00 PM daily</li>
-            </ul>
-            <p class="text-yellow-100 text-base md:text-lg mb-6 leading-relaxed drop-shadow-lg">
-                <strong>Location:</strong> Lot 1 Guysuco Compound, Coldingen, East Coast Demerara
-            </p>
-            <p class="text-yellow-100 text-base md:text-lg mb-6 leading-relaxed drop-shadow-lg">
-                <strong>Contact Numbers:</strong> 2704497 / 2704498
-            </p>
-            <p class="text-yellow-300 text-sm drop-shadow-lg">
-                Ensure you arrive within operating hours for assistance.
+
+            <div style="border-top:1px solid rgba(255,215,0,0.2);border-bottom:1px solid rgba(255,215,0,0.2);padding:18px 0;margin:18px 0;text-align:left;">
+                <p style="font-size:14px;font-weight:600;color:#fcd34d;margin-bottom:12px;">Common Errors &amp; What They Mean:</p>
+                <ul style="list-style:none;font-size:14px;color:rgba(254,243,199,0.75);line-height:2;">
+                    <li>⚠ <strong style="color:#fde68a;">No records found</strong> — The value entered does not match any record. Check the spelling or number and try again.</li>
+                    <li>⚠ <strong style="color:#fde68a;">Outside office hours</strong> — The portal is locked outside working hours. A supervisor password is required to continue.</li>
+                    <li>⚠ <strong style="color:#fde68a;">Session expired</strong> — You have been logged out automatically. Please sign in again.</li>
+                    <li>⚠ <strong style="color:#fde68a;">No internet connection</strong> — Check your network connection and try again. You will need to sign in again after reconnecting.</li>
+                    <li>⚠ <strong style="color:#fde68a;">Authentication error</strong> — Your login token is invalid. Refresh the page and sign in again.</li>
+                </ul>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left;margin-bottom:18px;">
+                <div>
+                    <p style="font-size:13px;font-weight:600;color:rgba(245,197,24,0.7);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Office Hours</p>
+                    <ul style="list-style:disc;list-style-position:inside;font-size:14px;color:rgba(254,243,199,0.75);line-height:2;">
+                        <li>Monday to Friday: 8:00 AM – 6:00 PM</li>
+                        <li>Saturday &amp; Sunday: 10:00 AM – 3:00 PM</li>
+                    </ul>
+                </div>
+                <div>
+                    <p style="font-size:13px;font-weight:600;color:rgba(245,197,24,0.7);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Contact</p>
+                    <p style="font-size:14px;color:rgba(254,243,199,0.75);line-height:2;">
+                        2704497 / 2704498<br>
+                        Lot 1 Guysuco Compound<br>
+                        Coldingen, East Coast Demerara
+                    </p>
+                </div>
+            </div>
+
+            <p style="font-size:13px;color:rgba(254,243,199,0.4);">
+                GECOM does not accept authorization for ID card collection. Registrants must collect their ID cards in person.
             </p>
         </div>
+
     </div>
+</div>
 
-    <script>
-        const SUPABASE_URL = 'https://xdwkfcrztvaeyeonqwrx.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhkd2tmY3J6dHZhZXllb25xd3J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NTY0NjQsImV4cCI6MjA3OTIzMjQ2NH0.9Dvlip8vGcn58kHLHgMm7ugG26i5ONDWCmm1ROHkneA';
+<!-- ══════════════════════════════════════
+     ERROR MODAL
+══════════════════════════════════════ -->
+<div id="modalOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+            <div id="modalIcon" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;"></div>
+            <h3 id="modalTitle" style="font-size:18px;font-weight:700;color:#fcd34d;"></h3>
+        </div>
+        <p id="modalMessage" style="font-size:14px;color:rgba(254,243,199,0.85);line-height:1.7;margin-bottom:24px;"></p>
+        <button id="modalCloseBtn" class="btn-gold" style="width:100%;padding:13px;">OK</button>
+    </div>
+</div>
 
-        let supabaseClient;
+<!-- ══════════════════════════════════════
+     SUPERVISOR PASSWORD MODAL
+══════════════════════════════════════ -->
+<div id="pwModalOverlay" class="modal-overlay">
+    <div class="modal-box" style="border-left:3px solid #f5c518;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:rgba(245,197,24,0.1);border:1px solid rgba(245,197,24,0.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🔒</div>
+            <div>
+                <div style="font-size:17px;font-weight:700;color:#fcd34d;">Supervisor Access</div>
+                <div style="font-size:12px;color:rgba(254,243,199,0.4);margin-top:3px;">Outside working hours — password required</div>
+            </div>
+        </div>
+        <div style="border-top:1px solid rgba(255,215,0,0.15);margin:16px 0;"></div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#fcd34d;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">Password</label>
+        <input type="password" id="pwInput" placeholder="Enter supervisor password..." class="field-input" style="margin-bottom:8px;" />
+        <p id="pwError" style="display:none;color:#f87171;font-size:13px;margin-bottom:4px;">Incorrect password. Please try again.</p>
+        <div style="display:flex;gap:10px;margin-top:18px;">
+            <button id="pwCancelBtn" class="btn-ghost" style="flex:1;padding:12px;">Cancel</button>
+            <button id="pwSubmitBtn" class="btn-gold" style="flex:2;padding:12px;">Unlock Access</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL      = 'https://xdwkfcrztvaeyeonqwrx.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhkd2tmY3J6dHZhZXllb25xd3J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NTY0NjQsImV4cCI6MjA3OTIzMjQ2NH0.9Dvlip8vGcn58kHLHgMm7ugG26i5ONDWCmm1ROHkneA';
+
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ── Screens ─────────────────────────────────────────────────────
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    // ── DOM refs ─────────────────────────────────────────────────────
+    const loginEmail    = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn      = document.getElementById('loginBtn');
+    const loginIcon     = document.getElementById('loginIcon');
+    const loginLoading  = document.getElementById('loginLoading');
+    const loginBtnText  = document.getElementById('loginBtnText');
+    const loginError    = document.getElementById('loginError');
+    const togglePw      = document.getElementById('togglePw');
+    const loggedInAs    = document.getElementById('loggedInAs');
+    const logoutBtn     = document.getElementById('logoutBtn');
+    const searchInput   = document.getElementById('searchInput');
+    const searchBtn     = document.getElementById('searchBtn');
+    const searchIcon    = document.getElementById('searchIcon');
+    const searchLoading = document.getElementById('searchLoading');
+    const searchBtnText = document.getElementById('searchBtnText');
+    const resultsBox    = document.getElementById('resultsBox');
+    const recordCount   = document.getElementById('recordCount');
+    const recordData    = document.getElementById('recordData');
+    const noticeCard    = document.getElementById('noticeCard');
+    const backBtn       = document.getElementById('backBtn');
+    const offlineBanner = document.getElementById('offlineBanner');
+
+    // ── Error modal ──────────────────────────────────────────────────
+    const modalOverlay  = document.getElementById('modalOverlay');
+    const modalTitle    = document.getElementById('modalTitle');
+    const modalMessage  = document.getElementById('modalMessage');
+    const modalIcon     = document.getElementById('modalIcon');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    function showModal(title, message, type = 'error') {
+        modalTitle.textContent   = title;
+        modalMessage.textContent = message;
+        if (type === 'error') {
+            modalIcon.style.cssText = 'width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;background:rgba(239,68,68,0.13);border:1px solid rgba(239,68,68,0.35);';
+            modalIcon.textContent = '⚠';
+        } else {
+            modalIcon.style.cssText = 'width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;background:rgba(245,197,24,0.12);border:1px solid rgba(245,197,24,0.35);';
+            modalIcon.textContent = 'ℹ';
+        }
+        modalOverlay.classList.add('active');
+    }
+    function hideModal() { modalOverlay.classList.remove('active'); }
+    modalCloseBtn.addEventListener('click', hideModal);
+    modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) hideModal(); });
+
+    // ── Password modal ───────────────────────────────────────────────
+    const pwModalOverlay = document.getElementById('pwModalOverlay');
+    const pwInput        = document.getElementById('pwInput');
+    const pwError        = document.getElementById('pwError');
+    const pwCancelBtn    = document.getElementById('pwCancelBtn');
+    const pwSubmitBtn    = document.getElementById('pwSubmitBtn');
+    let pwResolve = null;
+
+    function promptForPassword() {
+        return new Promise(resolve => {
+            pwResolve = resolve;
+            pwInput.value = '';
+            pwError.style.display = 'none';
+            pwModalOverlay.classList.add('active');
+            setTimeout(() => pwInput.focus(), 100);
+        });
+    }
+    function closePwModal(val) {
+        pwModalOverlay.classList.remove('active');
+        if (pwResolve) { pwResolve(val); pwResolve = null; }
+    }
+    pwCancelBtn.addEventListener('click', () => closePwModal(null));
+    pwSubmitBtn.addEventListener('click', () => closePwModal(pwInput.value));
+    pwInput.addEventListener('keypress', e => { if (e.key === 'Enter') closePwModal(pwInput.value); });
+
+    // ── Session state ────────────────────────────────────────────────
+    let cachedOverridePassword = sessionStorage.getItem('supervisorOverride') || null;
+    let currentRecords = [], currentSearchValue = '', currentSearchType = '';
+    let selectedSearchType = 'ID_NO';
+
+    // ── Offline detection ────────────────────────────────────────────
+    async function handleOffline() {
+        cachedOverridePassword = null;
+        sessionStorage.removeItem('supervisorOverride');
+        offlineBanner.classList.add('active');
+        await sb.auth.signOut();
+        showScreen('loginScreen');
+    }
+    function handleOnline() { offlineBanner.classList.remove('active'); }
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online',  handleOnline);
+    if (!navigator.onLine) { offlineBanner.classList.add('active'); }
+
+    // ── Show/hide password ───────────────────────────────────────────
+    togglePw.addEventListener('click', () => {
+        const isText = loginPassword.type === 'text';
+        loginPassword.type = isText ? 'password' : 'text';
+        togglePw.textContent = isText ? '👁' : '🙈';
+    });
+
+    // ── Login ────────────────────────────────────────────────────────
+    function setLoginLoading(on) {
+        loginBtn.disabled = on;
+        loginIcon.classList.toggle('hidden', on);
+        loginLoading.classList.toggle('hidden', !on);
+        loginBtnText.textContent = on ? 'Signing in...' : 'Sign In';
+    }
+
+    loginBtn.addEventListener('click', doLogin);
+    loginPassword.addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+    loginEmail.addEventListener('keypress', e => { if (e.key === 'Enter') loginPassword.focus(); });
+
+    async function doLogin() {
+        const email = loginEmail.value.trim();
+        const pw    = loginPassword.value;
+        loginError.style.display = 'none';
+
+        if (!email || !pw) {
+            loginError.textContent = 'Please enter your email address and password.';
+            loginError.style.display = 'block';
+            return;
+        }
+        if (!navigator.onLine) {
+            loginError.textContent = 'No internet connection. Please check your network and try again.';
+            loginError.style.display = 'block';
+            return;
+        }
+
+        setLoginLoading(true);
         try {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch (e) {
-            console.error("CRITICAL: Failed to load Supabase client library!", e);
+            const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+            if (error) throw error;
+            onSignedIn(data.user);
+        } catch (err) {
+            loginError.textContent = (err.message.includes('Invalid login') || err.message.includes('invalid'))
+                ? 'Incorrect email or password. Please try again.'
+                : (err.message || 'Sign in failed. Please try again.');
+            loginError.style.display = 'block';
+        } finally {
+            setLoginLoading(false);
+        }
+    }
+
+    function onSignedIn(user) {
+        loggedInAs.textContent = user.email;
+        cachedOverridePassword = sessionStorage.getItem('supervisorOverride') || null;
+        showScreen('searchScreen');
+        resultsBox.style.display = 'none';
+        noticeCard.style.display = '';
+        searchInput.value = '';
+        searchInput.focus();
+    }
+
+    // ── Logout ───────────────────────────────────────────────────────
+    logoutBtn.addEventListener('click', async () => {
+        cachedOverridePassword = null;
+        sessionStorage.removeItem('supervisorOverride');
+        await sb.auth.signOut();
+        showScreen('loginScreen');
+        loginEmail.value = '';
+        loginPassword.value = '';
+        loginError.style.display = 'none';
+    });
+
+    // ── Auth state listener ──────────────────────────────────────────
+    sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) onSignedIn(session.user);
+        else if (event === 'SIGNED_OUT') showScreen('loginScreen');
+    });
+
+    // ── Radio pills ──────────────────────────────────────────────────
+    const radioPills = document.querySelectorAll('.radio-pill');
+    const placeholders = {
+        ID_NO: 'Enter ID number...',
+        FORM_NO: 'Enter form number...',
+        NAME_OF_REGISTRANT: 'Enter name of registrant...'
+    };
+    radioPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            radioPills.forEach(p => p.classList.remove('selected'));
+            pill.classList.add('selected');
+            pill.querySelector('input').checked = true;
+            selectedSearchType = pill.dataset.value;
+            searchInput.placeholder = placeholders[selectedSearchType];
+            searchInput.focus();
+        });
+    });
+
+    // ── Search loading ───────────────────────────────────────────────
+    function setSearchLoading(on) {
+        searchBtn.disabled = on;
+        searchIcon.classList.toggle('hidden', on);
+        searchLoading.classList.toggle('hidden', !on);
+        searchBtnText.textContent = on ? 'Searching...' : 'Search';
+    }
+
+    // ── Search ───────────────────────────────────────────────────────
+    async function searchRecords() {
+        if (!navigator.onLine) {
+            showModal('No Internet Connection', 'You are currently offline. Please check your connection and try again.');
+            return;
+        }
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) { showScreen('loginScreen'); return; }
+
+        const value = searchInput.value.trim();
+        if (!value) {
+            showModal('Missing Input', 'Please enter a search value before searching.', 'info');
+            return;
         }
 
-        // ---- DOM refs ----
-        const loginScreen = document.getElementById('loginScreen');
-        const appInterface = document.getElementById('appInterface');
-        const staffEmailInput = document.getElementById('staffEmail');
-        const portalPassword = document.getElementById('portalPassword');
-        const loginBtn = document.getElementById('loginBtn');
-        const loginBtnText = document.getElementById('loginBtnText');
-        const loginError = document.getElementById('loginError');
-        const userDisplay = document.getElementById('userDisplay');
-        const logoutBtn = document.getElementById('logoutBtn');
+        setSearchLoading(true);
+        resultsBox.style.display = 'none';
 
-        const searchType = document.getElementById('searchType');
-        const searchInput = document.getElementById('searchInput');
-        const searchBtn = document.getElementById('searchBtn');
-        const searchIcon = document.getElementById('searchIcon');
-        const loadingIcon = document.getElementById('loadingIcon');
-        const errorBox = document.getElementById('errorBox');
-        const errorMessage = document.getElementById('errorMessage');
-        const resultsBox = document.getElementById('resultsBox');
-        const recordCount = document.getElementById('recordCount');
-        const recordData = document.getElementById('recordData');
-        const gettingStarted = document.getElementById('gettingStarted');
-        const backBtn = document.getElementById('backBtn');
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/search_admin_records`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    p_search_type: selectedSearchType,
+                    p_search_value: value,
+                    p_override_password: cachedOverridePassword
+                })
+            });
 
-        let currentRecords = [];
-        let currentSearchValue = '';
-        let currentSearchType = '';
-        let accessWindowIntervalId = null;
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                const msg = errData.message || errData.hint || '';
 
-        // ---- Session check ----
-        if (supabaseClient) {
-            checkActiveSession();
-        }
-
-        async function checkActiveSession() {
-            try {
-                const { data: { session }, error } = await supabaseClient.auth.getSession();
-                if (error) throw error;
-                if (session && session.user) {
-                    showApp(session.user.email);
-                } else {
-                    showLogin();
+                if (msg.includes('OUTSIDE_OFFICE_HOURS')) {
+                    cachedOverridePassword = null;
+                    sessionStorage.removeItem('supervisorOverride');
+                    setSearchLoading(false);
+                    const pw = await promptForPassword();
+                    if (!pw || !pw.trim()) {
+                        showModal('Access Denied', 'This service is only available Monday–Friday 8:00 AM–6:00 PM and Saturday–Sunday 10:00 AM–3:00 PM (Guyana time).');
+                        return;
+                    }
+                    cachedOverridePassword = pw;
+                    sessionStorage.setItem('supervisorOverride', pw);
+                    searchRecords();
+                    return;
                 }
-            } catch (err) {
-                console.error("Session check failed:", err);
-                showLogin();
-            }
-        }
 
-        function showLogin() {
-            loginScreen.classList.remove('hidden');
-            appInterface.classList.add('hidden');
-            stopAccessWindowPolling();
-        }
-
-        function showApp(email) {
-            loginScreen.classList.add('hidden');
-            appInterface.classList.remove('hidden');
-            userDisplay.textContent = `Operator: ${email}`;
-            startAccessWindowPolling();
-        }
-
-        // ---- Office-hours polling: forces logout the moment the office closes ----
-        // Uses the server's clock (via check_access_window RPC) as the source of
-        // truth, not the browser's clock, so it can't be spoofed client-side.
-        function startAccessWindowPolling() {
-            stopAccessWindowPolling();
-            checkAccessWindowNow(); // check immediately on login
-            accessWindowIntervalId = setInterval(checkAccessWindowNow, 60000); // then every 60s
-        }
-
-        function stopAccessWindowPolling() {
-            if (accessWindowIntervalId) {
-                clearInterval(accessWindowIntervalId);
-                accessWindowIntervalId = null;
-            }
-        }
-
-        async function checkAccessWindowNow() {
-            try {
-                const { data, error } = await supabaseClient.rpc('check_access_window');
-                if (error) throw error;
-                if (data === false) {
-                    await forceLogoutOfficeClosed();
+                if (msg.toLowerCase().includes('jwt') || response.status === 401 || response.status === 403) {
+                    await sb.auth.signOut();
+                    showScreen('loginScreen');
+                    showModal('Session Expired', 'Your session has expired. Please sign in again.');
+                    return;
                 }
-            } catch (err) {
-                console.error("Access window check failed:", err);
+
+                throw new Error(msg || `Server error: ${response.status}`);
             }
-        }
 
-        async function forceLogoutOfficeClosed() {
-            stopAccessWindowPolling();
-            await supabaseClient.auth.signOut();
-            showLogin();
-            showLoginError('Office is now closed. You have been logged out.');
-        }
+            const result = await response.json();
 
-        // ---- Auth ----
-        loginBtn.addEventListener('click', handleAuthentication);
-        portalPassword.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAuthentication(); });
-        logoutBtn.addEventListener('click', handleLogout);
-
-        async function handleAuthentication() {
-            const email = staffEmailInput.value.trim();
-            const password = portalPassword.value.trim();
-
-            if (!email || !password) {
-                showLoginError('Please supply both identity components.');
+            if (!result || result.length === 0) {
+                if (cachedOverridePassword) {
+                    cachedOverridePassword = null;
+                    sessionStorage.removeItem('supervisorOverride');
+                    pwError.style.display = 'block';
+                    setSearchLoading(false);
+                    const pw = await promptForPassword();
+                    if (!pw || !pw.trim()) {
+                        showModal('Access Denied', 'No records found or incorrect supervisor password.');
+                        return;
+                    }
+                    cachedOverridePassword = pw;
+                    sessionStorage.setItem('supervisorOverride', pw);
+                    searchRecords();
+                    return;
+                }
+                showModal('No Records Found', `No records found for "${value}". Please check the value and try again.`, 'info');
                 return;
             }
 
-            showLoginError('');
-            loginBtn.disabled = true;
-            loginBtnText.textContent = 'Verifying...';
+            showResults(result, value, selectedSearchType);
 
-            try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                showApp(data.user.email);
-            } catch (err) {
-                showLoginError(`Access Denied: ${err.message}`);
-            } finally {
-                loginBtn.disabled = false;
-                loginBtnText.textContent = 'Verify Access Identity';
-            }
-        }
-
-        function showLoginError(msg) {
-            if (!msg) { loginError.classList.add('hidden'); return; }
-            loginError.textContent = msg;
-            loginError.classList.remove('hidden');
-        }
-
-        async function handleLogout() {
-            stopAccessWindowPolling();
-            await supabaseClient.auth.signOut();
-            window.location.reload();
-        }
-
-        // ---- Search (secured via RPC, same as the protected portal) ----
-        searchBtn.addEventListener('click', searchRecords);
-        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchRecords(); });
-
-        async function searchRecords() {
-            const type = searchType.value;
-            const value = searchInput.value.trim();
-            if (!value) { showSearchError('Please enter a search value'); return; }
-
-            searchBtn.disabled = true;
-            searchIcon.classList.add('hidden');
-            loadingIcon.classList.remove('hidden');
-            hideSearchError();
-            hideResults();
-
-            try {
-                const { data, error } = await supabaseClient.rpc('safe_search_gateway', {
-                    p_search_type: type,
-                    p_search_value: value
-                });
-
-                if (error) throw error;
-
-                if (!data || data.length === 0) {
-                    showSearchError(`No records found for ${type.replace(/_/g, ' ')}: ${value}`);
-                } else {
-                    showResults(data, value, type);
-                }
-            } catch (err) {
-                showSearchError(err.message || 'Failed to fetch data.');
-            } finally {
-                searchBtn.disabled = false;
-                searchIcon.classList.remove('hidden');
-                loadingIcon.classList.add('hidden');
-            }
-        }
-
-        function showSearchError(msg) {
-            errorMessage.textContent = msg;
-            errorBox.classList.remove('hidden');
-            gettingStarted.classList.add('hidden');
-        }
-        function hideSearchError() { errorBox.classList.add('hidden'); }
-        function hideResults() { resultsBox.classList.add('hidden'); }
-
-        // Reads a field from a record regardless of whether the RPC returns
-        // UPPERCASE column names (e.g. NAME_OF_REGISTRANT) or lowercase ones
-        // (e.g. name_of_registrant) — covers either return shape.
-        function getField(record, upperKey) {
-            if (record[upperKey] !== undefined) return record[upperKey];
-            const lowerKey = upperKey.toLowerCase();
-            if (record[lowerKey] !== undefined) return record[lowerKey];
-            return undefined;
-        }
-
-        function showResults(records, searchValue, searchTypeVal) {
-            currentRecords = records;
-            currentSearchValue = searchValue;
-            currentSearchType = searchTypeVal;
-
-            recordCount.textContent = `${records.length} record(s) found for ${searchTypeVal.replace(/_/g,' ')}: ${searchValue}`;
-            backBtn.classList.add('hidden');
-            recordData.innerHTML = '';
-
-            if (records.length === 1) {
-                showFullRecord(records[0], 1, false);
+        } catch (err) {
+            if (!navigator.onLine) {
+                showModal('Connection Lost', 'Your connection was lost during the search. Please reconnect and try again.');
             } else {
-                showNameList(records);
+                showModal('Search Error', err.message || 'An unexpected error occurred. Please try again.');
             }
-
-            resultsBox.classList.remove('hidden');
-            gettingStarted.classList.add('hidden');
+        } finally {
+            setSearchLoading(false);
         }
+    }
 
-        function showNameList(records) {
-            backBtn.classList.add('hidden');
-            recordData.innerHTML = '';
+    // ── Results ──────────────────────────────────────────────────────
+    function showResults(records, searchValue, searchTypeVal) {
+        currentRecords     = records;
+        currentSearchValue = searchValue;
+        currentSearchType  = searchTypeVal;
+        const label = { ID_NO:'ID Number', FORM_NO:'Form Number', NAME_OF_REGISTRANT:'Name' }[searchTypeVal] || searchTypeVal;
+        recordCount.textContent = `${records.length} record${records.length !== 1 ? 's' : ''} found for ${label}: ${searchValue}`;
+        backBtn.style.display = 'none';
+        recordData.innerHTML  = '';
+        if (records.length === 1) showFullRecord(records[0], 1, false);
+        else showNameList(records);
+        resultsBox.style.display = '';
+        noticeCard.style.display = 'none';
+    }
 
-            const div = document.createElement('div');
-            div.className = 'space-y-4';
+    function showNameList(records) {
+        backBtn.style.display = 'none';
+        recordData.innerHTML  = '';
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+        records.forEach((r, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'result-item';
+            const subs = [];
+            if (r.ID_NO)   subs.push(`ID: ${r.ID_NO}`);
+            if (r.FORM_NO) subs.push(`Form: ${r.FORM_NO}`);
+            btn.innerHTML = `
+                <div style="font-size:15px;font-weight:600;color:#fef3c7;">${r.NAME_OF_REGISTRANT || '(No name)'}</div>
+                ${subs.length ? `<div style="font-size:12px;color:rgba(254,243,199,0.45);margin-top:4px;">${subs.join('  ·  ')}</div>` : ''}
+            `;
+            btn.addEventListener('click', () => showFullRecord(r, i + 1, true));
+            wrap.appendChild(btn);
+        });
+        recordData.appendChild(wrap);
+    }
 
-            records.forEach((r, i) => {
-                const btn = document.createElement('button');
-                btn.className = 'w-full text-left p-6 bg-gradient-to-r from-black/30 to-gray-800/30 rounded-xl border border-yellow-400/30 hover:bg-gradient-to-r hover:from-black/50 hover:to-gray-800/50 transition-all duration-300 backdrop-blur-sm text-yellow-100 font-medium drop-shadow-lg glow';
-
-                const name = getField(r, 'NAME_OF_REGISTRANT') || '(No name)';
-                const idNo = getField(r, 'ID_NO');
-                const formNo = getField(r, 'FORM_NO');
-
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'block text-yellow-200 text-lg';
-                nameSpan.textContent = name;
-                btn.appendChild(nameSpan);
-
-                const subParts = [];
-                if (idNo) subParts.push(`ID: ${idNo}`);
-                if (formNo) subParts.push(`Form: ${formNo}`);
-                if (subParts.length) {
-                    const subSpan = document.createElement('span');
-                    subSpan.className = 'block text-yellow-400/70 text-sm mt-1';
-                    subSpan.textContent = subParts.join('   ·   ');
-                    btn.appendChild(subSpan);
-                }
-
-                btn.addEventListener('click', () => showFullRecord(r, i + 1, true));
-                div.appendChild(btn);
-            });
-
-            recordData.appendChild(div);
-        }
-
-        function showFullRecord(record, num, showBack) {
-            recordData.innerHTML = '';
-
-            if (showBack) {
-                backBtn.classList.remove('hidden');
-                backBtn.onclick = () => {
-                    recordCount.textContent = `${currentRecords.length} record(s) found for ${currentSearchType.replace(/_/g,' ')}: ${currentSearchValue}`;
-                    showNameList(currentRecords);
-                };
-            } else {
-                backBtn.classList.add('hidden');
-            }
-
-            const div = document.createElement('div');
-            div.className = 'glass rounded-xl p-6 md:p-8 fade-in glow';
-
-            const header = document.createElement('h3');
-            header.className = 'text-xl md:text-2xl font-semibold text-yellow-400 mb-6 drop-shadow-lg';
-            header.textContent = `Record ${num}`;
-            div.appendChild(header);
-
-            const fields = document.createElement('div');
-            fields.className = 'space-y-4 text-yellow-100 drop-shadow-lg';
-
-            const labels = {
-                NAME_OF_REGISTRANT: 'Name of Registrant',
-                ID_NO: 'ID Number',
-                FORM_NO: 'Form Number',
-                STATUS: 'Status',
-                CATEGORY: 'Category'
+    function showFullRecord(record, num, showBack) {
+        recordData.innerHTML = '';
+        if (showBack) {
+            backBtn.style.display = 'inline-block';
+            backBtn.onclick = () => {
+                const label = { ID_NO:'ID Number', FORM_NO:'Form Number', NAME_OF_REGISTRANT:'Name' }[currentSearchType] || currentSearchType;
+                recordCount.textContent = `${currentRecords.length} record${currentRecords.length !== 1 ? 's' : ''} found for ${label}: ${currentSearchValue}`;
+                showNameList(currentRecords);
             };
-
-            for (const key in labels) {
-                const val = getField(record, key);
-                if (val !== undefined) {
-                    const row = document.createElement('div');
-                    row.className = 'flex flex-col md:flex-row gap-2 md:gap-4';
-
-                    const labelEl = document.createElement('span');
-                    labelEl.className = 'font-semibold text-yellow-300 w-48 drop-shadow-lg';
-                    labelEl.textContent = labels[key] + ':';
-
-                    const valueEl = document.createElement('span');
-                    valueEl.textContent = val;
-
-                    row.appendChild(labelEl);
-                    row.appendChild(valueEl);
-                    fields.appendChild(row);
-                }
-            }
-
-            div.appendChild(fields);
-            recordData.appendChild(div);
+        } else {
+            backBtn.style.display = 'none';
         }
-    </script>
+
+        const fields = {
+            NAME_OF_REGISTRANT: 'Name of Registrant',
+            ID_NO:    'ID Number',
+            FORM_NO:  'Form Number',
+            STATUS:   'Status',
+            CATEGORY: 'Category'
+        };
+
+        const wrap = document.createElement('div');
+        Object.entries(fields).forEach(([key, label], idx) => {
+            if (record[key] === undefined) return;
+            const row = document.createElement('div');
+            row.style.cssText = `display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:14px 0;${idx > 0 ? 'border-top:1px solid rgba(255,215,0,0.09);' : ''}`;
+            const lbl = document.createElement('span');
+            lbl.style.cssText = 'font-size:13px;font-weight:600;color:rgba(245,197,24,0.65);text-transform:uppercase;letter-spacing:0.07em;white-space:nowrap;flex-shrink:0;';
+            lbl.textContent = label;
+            const val = document.createElement('span');
+            val.style.cssText = 'font-size:15px;color:#fef3c7;font-weight:500;text-align:right;';
+            val.textContent = record[key];
+            row.appendChild(lbl);
+            row.appendChild(val);
+            wrap.appendChild(row);
+        });
+        recordData.appendChild(wrap);
+    }
+
+    // ── Event listeners ──────────────────────────────────────────────
+    searchBtn.addEventListener('click', searchRecords);
+    searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchRecords(); });
+</script>
 </body>
 </html>
