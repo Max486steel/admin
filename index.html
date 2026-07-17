@@ -12,6 +12,7 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(160deg, #0a0a0a 0%, #141414 40%, #1c1c1c 100%);
             min-height: 100vh;
+            overflow-x: hidden;
         }
         .screen { display: none; }
         .screen.active { display: block; }
@@ -161,6 +162,82 @@
             background:rgba(0,0,0,0.55);
             backdrop-filter:blur(12px);
             position:sticky; top:0; z-index:100;
+        }
+
+        /* ══════════════════════════════════════
+           MOBILE RESPONSIVE OVERRIDES
+        ══════════════════════════════════════ */
+        @media (max-width: 640px) {
+            /* Login logo / header */
+            #loginScreen h1 { font-size: 32px !important; }
+            #loginScreen [style*="width:88px"][style*="height:88px"] { width:64px !important; height:64px !important; }
+            #loginScreen svg[width="44"] { width:32px !important; height:32px !important; }
+            #loginScreen .glass[style*="padding:36px"] { padding: 22px !important; }
+
+            /* Search screen header */
+            #searchScreen h1 { font-size: 30px !important; }
+            #searchScreen [style*="width:88px"][style*="height:88px"] { width:60px !important; height:60px !important; }
+            #searchScreen svg[width="44"] { width:28px !important; height:28px !important; }
+            #searchScreen p[style*="font-size:18px"] { font-size: 14px !important; }
+
+            /* Top bar */
+            .topbar { padding: 10px 14px; }
+            .topbar span[style*="font-size:13px"] { font-size: 12px !important; }
+            #loggedInAs { display: none; } /* hide email on very small screens to avoid overflow */
+
+            /* Cards / sections generally */
+            .glass[style*="padding:36px"] { padding: 18px !important; }
+            .glass[style*="border-radius:20px"] { border-radius: 16px !important; }
+
+            /* Search row: stack input and button */
+            #searchScreen div[style*="display:flex;flex-wrap:wrap;gap:14px"] {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+            #searchBtn { width: 100%; justify-content: center; }
+
+            /* Radio pills: full-width stack for easy tapping */
+            .radio-group { flex-direction: column; }
+            .radio-pill { width: 100%; }
+
+            /* Results header */
+            #resultsBox div[style*="padding:22px 28px"] {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 14px;
+                padding: 16px 18px !important;
+            }
+            #resultsBox h2 { font-size: 21px !important; }
+            #backBtn { align-self: flex-start; }
+            #recordData { padding: 16px 18px !important; }
+
+            /* Record rows: stack label/value instead of space-between */
+            #recordData > div > div {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 4px !important;
+            }
+            #recordData > div > div span:last-child { text-align: left !important; }
+
+            /* Notice card two-column grid -> single column */
+            #noticeCard div[style*="grid-template-columns:1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+                gap: 20px !important;
+            }
+            #noticeCard h3 { font-size: 18px !important; }
+
+            /* Modal */
+            .modal-box { padding: 22px !important; border-radius: 16px !important; }
+
+            /* General container padding */
+            #searchScreen > div[style*="max-width:860px"] { padding: 20px 12px 40px !important; }
+        }
+
+        @media (max-width: 380px) {
+            #loginScreen h1 { font-size: 26px !important; }
+            #searchScreen h1 { font-size: 24px !important; }
+            .field-input { font-size: 15px; padding: 12px 14px; }
+            .btn-gold { font-size: 15px; }
         }
     </style>
 </head>
