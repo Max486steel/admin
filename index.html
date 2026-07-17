@@ -786,6 +786,8 @@
         noticeCard.style.display = 'none';
     }
 
+    // ── FIXED: builds DOM nodes with textContent instead of innerHTML
+    //           to prevent stored XSS from malicious/corrupted field data ──
     function showNameList(records) {
         backBtn.style.display = 'none';
         recordData.innerHTML  = '';
@@ -794,13 +796,22 @@
         records.forEach((r, i) => {
             const btn = document.createElement('button');
             btn.className = 'result-item';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.style.cssText = 'font-size:15px;font-weight:600;color:#fef3c7;';
+            nameDiv.textContent = r.NAME_OF_REGISTRANT || '(No name)';
+            btn.appendChild(nameDiv);
+
             const subs = [];
             if (r.ID_NO)   subs.push(`ID: ${r.ID_NO}`);
             if (r.FORM_NO) subs.push(`Form: ${r.FORM_NO}`);
-            btn.innerHTML = `
-                <div style="font-size:15px;font-weight:600;color:#fef3c7;">${r.NAME_OF_REGISTRANT || '(No name)'}</div>
-                ${subs.length ? `<div style="font-size:12px;color:rgba(254,243,199,0.45);margin-top:4px;">${subs.join('  ·  ')}</div>` : ''}
-            `;
+            if (subs.length) {
+                const subDiv = document.createElement('div');
+                subDiv.style.cssText = 'font-size:12px;color:rgba(254,243,199,0.45);margin-top:4px;';
+                subDiv.textContent = subs.join('  ·  ');
+                btn.appendChild(subDiv);
+            }
+
             btn.addEventListener('click', () => showFullRecord(r, i + 1, true));
             wrap.appendChild(btn);
         });
