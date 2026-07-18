@@ -60,10 +60,7 @@
             border-color: rgba(255,215,0,0.8);
             box-shadow: 0 0 0 3px rgba(255,215,0,0.12);
         }
-        .field-input:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .field-input:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .btn-gold {
             background: linear-gradient(135deg,#f5c518,#d4a00a);
@@ -158,18 +155,6 @@
             position:sticky; top:0; z-index:100;
         }
 
-        /* Attempt counter badge */
-        .attempt-badge {
-            display:inline-block;
-            padding:4px 10px;
-            border-radius:20px;
-            font-size:12px;
-            font-weight:600;
-            margin-top:8px;
-        }
-        .attempt-badge.warn { background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
-        .attempt-badge.danger { background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
-
         /* ══════════════════════════════════════
            MOBILE RESPONSIVE
         ══════════════════════════════════════ */
@@ -231,7 +216,6 @@
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
         <div style="width:100%;max-width:440px;">
 
-            <!-- Header -->
             <div class="fade-in" style="text-align:center;margin-bottom:28px;">
                 <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
                     <div style="width:88px;height:88px;background:linear-gradient(135deg,#fbbf24,#d97706);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 28px rgba(255,215,0,0.4);" class="glass glow">
@@ -246,7 +230,6 @@
                 </div>
             </div>
 
-            <!-- Login Card -->
             <div class="glass fade-in glass-hover glow" style="border-radius:20px;padding:36px;">
                 <h2 style="font-size:18px;font-weight:600;color:#fcd34d;margin-bottom:24px;text-align:center;">Staff Sign In</h2>
 
@@ -281,7 +264,6 @@
 ══════════════════════════════════════ -->
 <div id="searchScreen" class="screen">
 
-    <!-- Top bar -->
     <div class="topbar">
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="width:32px;height:32px;background:linear-gradient(135deg,#f5c518,#b8860b);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -297,7 +279,6 @@
 
     <div style="max-width:860px;margin:0 auto;padding:32px 16px 48px;">
 
-        <!-- Main Header -->
         <div class="fade-in" style="text-align:center;margin-bottom:36px;">
             <div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
                 <div style="width:88px;height:88px;background:linear-gradient(135deg,#fbbf24,#d97706);border-radius:50%;display:flex;align-items:center;justify-content:center;" class="glass glow">
@@ -403,9 +384,7 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     ERROR MODAL
-══════════════════════════════════════ -->
+<!-- ERROR MODAL -->
 <div id="modalOverlay" class="modal-overlay">
     <div class="modal-box">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
@@ -417,9 +396,7 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SUPERVISOR PASSWORD MODAL
-══════════════════════════════════════ -->
+<!-- SUPERVISOR PASSWORD MODAL -->
 <div id="pwModalOverlay" class="modal-overlay">
     <div class="modal-box" style="border-left:3px solid #f5c518;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;">
@@ -533,14 +510,18 @@
     let currentRecords = [], currentSearchValue = '', currentSearchType = '';
     let selectedSearchType = 'ID_NO';
 
-    // ── Helpers ───────────────────────────────────────────────────────
-    async function rpcPost(fnName, body) {
+    // ── RPC helper — supports optional auth token ─────────────────────
+    async function rpcPost(fnName, body, accessToken = null) {
+        const headers = {
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+        };
+        if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+        }
         return fetch(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
             method: 'POST',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify(body)
         });
     }
@@ -601,10 +582,10 @@
             const allowed   = await checkResp.json();
 
             if (!allowed) {
-                loginBtn.disabled = true;
-                loginEmail.disabled = true;
+                loginBtn.disabled      = true;
+                loginEmail.disabled    = true;
                 loginPassword.disabled = true;
-                loginError.innerHTML = '🔒 Too many failed login attempts. Access is locked for <strong>30 minutes</strong>. Please contact your administrator.';
+                loginError.innerHTML   = '🔒 Too many failed login attempts. Access is locked for <strong>30 minutes</strong>. Please contact your administrator.';
                 loginError.style.display = 'block';
                 return;
             }
@@ -613,18 +594,18 @@
             const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
 
             if (error) {
-                // Log failed attempt server-side
+                // Log failed attempt — no token yet so use anon key only
                 await rpcPost('log_login_attempt', { p_email: email, p_success: false });
 
                 // Re-check remaining attempts
-                const checkResp2 = await rpcPost('check_login_allowed', { p_email: email });
+                const checkResp2   = await rpcPost('check_login_allowed', { p_email: email });
                 const stillAllowed = await checkResp2.json();
 
                 if (!stillAllowed) {
-                    loginBtn.disabled = true;
-                    loginEmail.disabled = true;
+                    loginBtn.disabled      = true;
+                    loginEmail.disabled    = true;
                     loginPassword.disabled = true;
-                    loginError.innerHTML = `🔒 Too many failed login attempts (${MAX_SUPERVISOR_ATTEMPTS}/${MAX_SUPERVISOR_ATTEMPTS}). Access is locked for <strong>30 minutes</strong>. Please contact your administrator.`;
+                    loginError.innerHTML   = `🔒 Too many failed login attempts (5/5). Access is locked for <strong>30 minutes</strong>. Please contact your administrator.`;
                 } else {
                     loginError.textContent = (error.message.includes('Invalid login') || error.message.includes('invalid'))
                         ? 'Incorrect email or password. Please try again.'
@@ -634,8 +615,10 @@
                 return;
             }
 
-            // ── Step 3: Success — clear failed attempts ──
-            await rpcPost('reset_login_attempts', { p_email: email });
+            // ── Step 3: Success — log it and reset failed attempts ──
+            await rpcPost('log_login_attempt', { p_email: email, p_success: true }, data.session.access_token);
+            await rpcPost('reset_login_attempts', { p_email: email }, data.session.access_token);
+
             onSignedIn(data.user);
 
         } catch (err) {
@@ -660,7 +643,7 @@
 
     // ── Logout ────────────────────────────────────────────────────────
     logoutBtn.addEventListener('click', async () => {
-        cachedOverridePassword = null;
+        cachedOverridePassword      = null;
         sessionStorage.removeItem('supervisorOverride');
         await sb.auth.signOut();
         showScreen('loginScreen');
@@ -775,7 +758,6 @@
             const result = await response.json();
 
             if (!result || result.length === 0) {
-                // Wrong supervisor password — result is empty because gate failed
                 if (cachedOverridePassword) {
                     cachedOverridePassword = null;
                     sessionStorage.removeItem('supervisorOverride');
@@ -786,7 +768,7 @@
                     if (supervisorAttempts >= MAX_SUPERVISOR_ATTEMPTS) {
                         supervisorLocked = true;
                         sessionStorage.setItem('supervisorLocked', 'true');
-                        pwInput.disabled   = true;
+                        pwInput.disabled     = true;
                         pwSubmitBtn.disabled = true;
                         setSearchLoading(false);
                         showModal('Account Locked', `Too many incorrect supervisor password attempts (${MAX_SUPERVISOR_ATTEMPTS}/${MAX_SUPERVISOR_ATTEMPTS}). Access is locked for this session. Please contact your administrator.`);
